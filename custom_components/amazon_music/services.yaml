@@ -1,6 +1,6 @@
 get_track:
   name: Lire un titre
-  description: Renvoie titre, artistes, album, pochette, durée et état « j'aime ».
+  description: "Renvoie titre, artistes, album, pochette, durée et état « j'aime »."
   fields:
     track_id:
       name: Identifiant du titre
@@ -10,7 +10,7 @@ get_track:
         text:
 list_playlists:
   name: Lister mes playlists
-  description: Playlists créées par le compte (toutes les pages).
+  description: "Playlists créées par le compte (toutes les pages)."
   fields:
     limit:
       name: Nombre maximum
@@ -21,7 +21,7 @@ list_playlists:
           max: 5000
 list_followed_playlists:
   name: Lister les playlists suivies
-  description: Playlists suivies par le compte (toutes les pages).
+  description: "Playlists suivies par le compte (toutes les pages)."
   fields:
     limit:
       name: Nombre maximum
@@ -32,7 +32,7 @@ list_followed_playlists:
           max: 5000
 get_playlist_tracks:
   name: Titres d'une playlist
-  description: Titres d'une playlist, pages suivies automatiquement.
+  description: "Titres d'une playlist, pages suivies automatiquement."
   fields:
     playlist_id:
       name: Identifiant de la playlist
@@ -48,7 +48,7 @@ get_playlist_tracks:
           max: 5000
 search:
   name: Suggestions de recherche
-  description: Quelques suggestions rapides, tous types mélangés.
+  description: "Quelques suggestions rapides, tous types mélangés."
   fields:
     query:
       name: Recherche
@@ -57,7 +57,7 @@ search:
         text:
 search_catalog:
   name: Recherche complète
-  description: Recherche dans le catalogue, résultats regroupés par type.
+  description: "Recherche dans le catalogue, résultats regroupés par type."
   fields:
     query:
       name: Recherche
@@ -79,7 +79,7 @@ search_catalog:
           max: 50
 create_playlist:
   name: Créer une playlist
-  description: Crée une playlist sur le compte Amazon Music.
+  description: "Crée une playlist sur le compte Amazon Music."
   fields:
     title:
       name: Titre
@@ -96,7 +96,7 @@ create_playlist:
         object:
 delete_playlist:
   name: Supprimer une playlist
-  description: Supprime définitivement une playlist du compte.
+  description: "Supprime définitivement une playlist du compte."
   fields:
     playlist_id:
       name: Identifiant de la playlist
@@ -105,7 +105,7 @@ delete_playlist:
         text:
 add_track_to_playlist:
   name: Ajouter un titre à une playlist
-  description: Ajoute un titre à la fin d'une playlist.
+  description: "Ajoute un titre à la fin d'une playlist."
   fields:
     playlist_id:
       name: Identifiant de la playlist
@@ -124,7 +124,7 @@ add_track_to_playlist:
         boolean:
 remove_track_from_playlist:
   name: Retirer un titre d'une playlist
-  description: Retire la première occurrence du titre dans la playlist.
+  description: "Retire la première occurrence du titre dans la playlist."
   fields:
     playlist_id:
       name: Identifiant de la playlist
@@ -138,7 +138,7 @@ remove_track_from_playlist:
         text:
 set_track_like:
   name: Aimer un titre
-  description: Règle l'avis sur un titre : LIKE (j'aime), NEUTRAL (aucun avis) ou DISLIKE.
+  description: "Règle l'avis sur un titre : LIKE (j'aime), NEUTRAL (aucun avis) ou DISLIKE."
   fields:
     track_id:
       name: Identifiant du titre
@@ -153,7 +153,7 @@ set_track_like:
           options: [LIKE, NEUTRAL, DISLIKE]
 play_on_alexa:
   name: Jouer sur Alexa
-  description: Demande à une enceinte Alexa Media Player de jouer une playlist, un titre ou une recherche. Indiquer un seul des trois.
+  description: "Demande à une enceinte Alexa Media Player de jouer une playlist, un titre ou une recherche. Indiquer un seul des trois."
   fields:
     entity_id:
       name: Enceinte
