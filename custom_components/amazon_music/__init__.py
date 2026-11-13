@@ -15,9 +15,11 @@ from .const import (
     CONF_SESSION_TOKEN,
     DOMAIN,
     SERVICE_GET_TRACK,
+    SERVICE_LIST_PLAYLISTS,
 )
 
 SERVICE_GET_TRACK_SCHEMA = vol.Schema({vol.Required("track_id"): str})
+SERVICE_LIST_PLAYLISTS_SCHEMA = vol.Schema({vol.Optional("limit", default=50): int})
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -41,11 +43,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except AmazonMusicError as err:
             raise RuntimeError(str(err)) from err
 
+    async def handle_list_playlists(call: ServiceCall) -> dict:
+        try:
+            playlists = await api.async_list_playlists(call.data["limit"])
+        except AmazonMusicAuthError as err:
+            raise RuntimeError(
+                "Session Amazon Music expirée : reconfigurez l'intégration"
+            ) from err
+        except AmazonMusicError as err:
+            raise RuntimeError(str(err)) from err
+        return {"playlists": playlists}
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_TRACK,
         handle_get_track,
         schema=SERVICE_GET_TRACK_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_LIST_PLAYLISTS,
+        handle_list_playlists,
+        schema=SERVICE_LIST_PLAYLISTS_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     return True
@@ -56,4 +76,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     if not hass.data.get(DOMAIN):
         hass.services.async_remove(DOMAIN, SERVICE_GET_TRACK)
+        hass.services.async_remove(DOMAIN, SERVICE_LIST_PLAYLISTS)
     return True

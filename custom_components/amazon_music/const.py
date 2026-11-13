@@ -14,12 +14,31 @@ WEB_URL = "https://music.amazon.fr/"
 API_KEY = "amzn1.application.4ff5579ca2e3407aba989a1f5dbdaf69"
 TERRITORY = "FR"
 
-# Opérations GraphQL persistées (hash SHA-256 par release du site).
-# Ces hashes changent à chaque mise à jour d'Amazon Music : ils doivent
-# être revérifiés si une requête répond avec une erreur "PersistedQueryNotFound".
-OP_MEDIA_SESSION_METADATA = "MediaSessionMeatadata"
-HASH_MEDIA_SESSION_METADATA = (
-    "cbeb58d74b06856d07d15de6d286c66de25fbdcb950bd464f27c0a76abeabc19"
-)
+# Requêtes GraphQL écrites à la main (courtes). Le serveur les accepte en texte
+# complet, sans hash persisté : elles ne dépendent donc pas des hashes du site.
+# Vérifié le 13/11/2026 avec la session de test.
+QUERY_TRACK = """
+query Track($id: String!) {
+  track(id: $id) {
+    id
+    title
+    album { title images { url } }
+    contributingArtists { edges { node { name } } }
+  }
+}
+"""
+
+QUERY_USER_PLAYLISTS = """
+query UserPlaylists($firstLimit: Float!, $afterCursor: String) {
+  user {
+    id
+    playlists(limit: $firstLimit, cursor: $afterCursor) {
+      edges { node { id title trackCount } }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+}
+"""
 
 SERVICE_GET_TRACK = "get_track"
+SERVICE_LIST_PLAYLISTS = "list_playlists"

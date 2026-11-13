@@ -9,3 +9,16 @@ get_track:
       example: "B0GWPYXQHB"
       selector:
         text:
+
+list_playlists:
+  name: Lister les playlists
+  description: Liste les playlists créées par le compte (lecture seule, première page).
+  fields:
+    limit:
+      name: Nombre maximum
+      description: Nombre de playlists à retourner.
+      default: 50
+      selector:
+        number:
+          min: 1
+          max: 200

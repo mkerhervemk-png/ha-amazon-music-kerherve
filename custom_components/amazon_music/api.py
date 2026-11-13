@@ -14,8 +14,8 @@ import aiohttp
 from .const import (
     API_KEY,
     GQL_URL,
-    HASH_MEDIA_SESSION_METADATA,
-    OP_MEDIA_SESSION_METADATA,
+    QUERY_TRACK,
+    QUERY_USER_PLAYLISTS,
     TERRITORY,
     WEB_URL,
 )
@@ -47,7 +47,7 @@ class AmazonMusicApi:
         if csrf:
             self._cookies["csrf"] = csrf
         self._csrf_token = csrf or ""
-        self._csrf_rnd = ""
+        self._csrf_rnd = str(secrets.randbelow(10**10))
         self._csrf_ts = ""
         self._device_id = device_id
         self._session_id = session_id
@@ -95,24 +95,15 @@ class AmazonMusicApi:
         token = re.search(r'csrf-token["\']?\s*[:=]\s*["\']([^"\']+)["\']', html)
         if token:
             self._csrf_token = token.group(1)
-        if not self._csrf_rnd:
-            self._csrf_rnd = str(secrets.randbelow(10**10))
         self._csrf_ts = str(int(time.time()))
 
     async def _gql(
-        self, operation: str, sha256: str, variables: dict[str, Any]
+        self, operation: str, query: str, variables: dict[str, Any]
     ) -> dict[str, Any]:
         if not self._csrf_ts:
             await self.async_refresh_csrf()
 
-        body = {
-            "operationName": operation,
-            "variables": variables,
-            "extensions": {
-                "clientLibrary": {"name": "@apollo/client", "version": "4.1.6"},
-                "persistedQuery": {"version": 1, "sha256Hash": sha256},
-            },
-        }
+        body = {"operationName": operation, "variables": variables, "query": query}
         try:
             async with self._session.post(
                 GQL_URL, headers=self._headers(), data=json.dumps(body)
@@ -127,33 +118,45 @@ class AmazonMusicApi:
 
         if "errors" in payload:
             messages = " ; ".join(e.get("message", "?") for e in payload["errors"])
-            if "PersistedQueryNotFound" in messages:
-                raise AmazonMusicError(
-                    "Hash GraphQL obsolète : le site a été mis à jour"
-                )
             raise AmazonMusicError(f"Erreur GraphQL : {messages}")
         return payload.get("data", {})
 
     async def async_get_track(self, track_id: str) -> dict[str, Any]:
         """Métadonnées d'un titre (lecture seule)."""
-        data = await self._gql(
-            OP_MEDIA_SESSION_METADATA,
-            HASH_MEDIA_SESSION_METADATA,
-            {
-                "id": track_id,
-                "isPodcast": False,
-                "isTrack": True,
-                "isAudiobook": False,
-            },
-        )
+        data = await self._gql("Track", QUERY_TRACK, {"id": track_id})
         track = data.get("track")
         if not track:
             raise AmazonMusicError(f"Titre introuvable : {track_id}")
         album = track.get("album") or {}
         images = album.get("images") or []
+        artists = [
+            e["node"]["name"]
+            for e in (track.get("contributingArtists") or {}).get("edges", [])
+            if e.get("node")
+        ]
         return {
             "id": track.get("id"),
             "title": track.get("title"),
+            "artists": artists,
             "album": album.get("title"),
             "image": images[0]["url"] if images else None,
         }
+
+    async def async_list_playlists(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Playlists créées par le compte (lecture seule, première page)."""
+        data = await self._gql(
+            "UserPlaylists",
+            QUERY_USER_PLAYLISTS,
+            {"firstLimit": float(limit), "afterCursor": None},
+        )
+        user = data.get("user") or {}
+        edges = (user.get("playlists") or {}).get("edges", [])
+        return [
+            {
+                "id": e["node"]["id"],
+                "title": (e["node"].get("title") or "").strip(),
+                "track_count": e["node"].get("trackCount"),
+            }
+            for e in edges
+            if e.get("node")
+        ]
