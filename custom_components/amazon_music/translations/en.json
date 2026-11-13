@@ -7,14 +7,31 @@
         "data": {
           "cookies": "Cookies Amazon (ligne cookie complète)"
         }
+      },
+      "reauth_confirm": {
+        "title": "Session Amazon Music expirée",
+        "description": "Collez la ligne « cookie » d'une requête de music.amazon.fr (outils de développement, onglet Réseau, requête config.json ou gql, en-têtes de requête). Les jetons CSRF sont récupérés automatiquement.",
+        "data": {
+          "cookies": "Cookies Amazon (ligne cookie complète)"
+        }
+      },
+      "reconfigure": {
+        "title": "Remplacer les cookies Amazon Music",
+        "description": "Collez la ligne « cookie » d'une requête de music.amazon.fr (outils de développement, onglet Réseau, requête config.json ou gql, en-têtes de requête). Les jetons CSRF sont récupérés automatiquement.",
+        "data": {
+          "cookies": "Cookies Amazon (ligne cookie complète)"
+        }
       }
     },
     "error": {
       "invalid_auth": "Compte non reconnu : cookies incomplets ou session Amazon expirée.",
-      "cannot_connect": "Connexion à Amazon Music impossible."
+      "cannot_connect": "Connexion à Amazon Music impossible.",
+      "wrong_account": "Ces cookies appartiennent à un autre compte Amazon."
     },
     "abort": {
-      "already_configured": "Ce compte est déjà configuré."
+      "already_configured": "Ce compte est déjà configuré.",
+      "reauth_successful": "Cookies remplacés, intégration rechargée.",
+      "reconfigure_successful": "Cookies remplacés, intégration rechargée."
     }
   }
 }

@@ -1,53 +1,177 @@
 get_track:
-  name: Obtenir un titre
-  description: Lit les métadonnées d'un titre Amazon Music (lecture seule).
+  name: Lire un titre
+  description: Renvoie titre, artistes, album, pochette, durée et état « j'aime ».
   fields:
     track_id:
       name: Identifiant du titre
-      description: Identifiant Amazon Music, par exemple B0GWPYXQHB.
       required: true
-      example: "B0GWPYXQHB"
+      example: B0GWPYXQHB
       selector:
         text:
-
+list_playlists:
+  name: Lister mes playlists
+  description: Playlists créées par le compte (toutes les pages).
+  fields:
+    limit:
+      name: Nombre maximum
+      default: 500
+      selector:
+        number:
+          min: 1
+          max: 5000
+list_followed_playlists:
+  name: Lister les playlists suivies
+  description: Playlists suivies par le compte (toutes les pages).
+  fields:
+    limit:
+      name: Nombre maximum
+      default: 500
+      selector:
+        number:
+          min: 1
+          max: 5000
 get_playlist_tracks:
   name: Titres d'une playlist
-  description: Liste les titres d'une playlist (lecture seule, première page).
+  description: Titres d'une playlist, pages suivies automatiquement.
   fields:
     playlist_id:
       name: Identifiant de la playlist
       required: true
-      example: "b7048fc052e14b6ebb6d14198e191c62"
       selector:
         text:
     limit:
       name: Nombre maximum
-      default: 50
+      default: 100
       selector:
         number:
           min: 1
-          max: 200
-
+          max: 5000
 search:
-  name: Rechercher
-  description: Suggestions de recherche (artistes, playlists, titres, albums). Ce n'est pas la page de résultats complète.
+  name: Suggestions de recherche
+  description: Quelques suggestions rapides, tous types mélangés.
   fields:
     query:
       name: Recherche
       required: true
-      example: "bach"
       selector:
         text:
-
-list_playlists:
-  name: Lister les playlists
-  description: Liste les playlists créées par le compte (lecture seule, première page).
+search_catalog:
+  name: Recherche complète
+  description: Recherche dans le catalogue, résultats regroupés par type.
   fields:
+    query:
+      name: Recherche
+      required: true
+      selector:
+        text:
+    types:
+      name: Types
+      selector:
+        select:
+          multiple: true
+          options: [track, artist, album, playlist]
     limit:
-      name: Nombre maximum
-      description: Nombre de playlists à retourner.
-      default: 50
+      name: Résultats par type
+      default: 10
       selector:
         number:
           min: 1
-          max: 200
+          max: 50
+create_playlist:
+  name: Créer une playlist
+  description: Crée une playlist sur le compte Amazon Music.
+  fields:
+    title:
+      name: Titre
+      required: true
+      selector:
+        text:
+    description:
+      name: Description
+      selector:
+        text:
+    track_ids:
+      name: Titres de départ
+      selector:
+        object:
+delete_playlist:
+  name: Supprimer une playlist
+  description: Supprime définitivement une playlist du compte.
+  fields:
+    playlist_id:
+      name: Identifiant de la playlist
+      required: true
+      selector:
+        text:
+add_track_to_playlist:
+  name: Ajouter un titre à une playlist
+  description: Ajoute un titre à la fin d'une playlist.
+  fields:
+    playlist_id:
+      name: Identifiant de la playlist
+      required: true
+      selector:
+        text:
+    track_id:
+      name: Identifiant du titre
+      required: true
+      selector:
+        text:
+    reject_duplicates:
+      name: Refuser les doublons
+      default: true
+      selector:
+        boolean:
+remove_track_from_playlist:
+  name: Retirer un titre d'une playlist
+  description: Retire la première occurrence du titre dans la playlist.
+  fields:
+    playlist_id:
+      name: Identifiant de la playlist
+      required: true
+      selector:
+        text:
+    track_id:
+      name: Identifiant du titre
+      required: true
+      selector:
+        text:
+set_track_like:
+  name: Aimer un titre
+  description: Règle l'avis sur un titre : LIKE (j'aime), NEUTRAL (aucun avis) ou DISLIKE.
+  fields:
+    track_id:
+      name: Identifiant du titre
+      required: true
+      selector:
+        text:
+    state:
+      name: État
+      default: LIKE
+      selector:
+        select:
+          options: [LIKE, NEUTRAL, DISLIKE]
+play_on_alexa:
+  name: Jouer sur Alexa
+  description: Demande à une enceinte Alexa Media Player de jouer une playlist, un titre ou une recherche. Indiquer un seul des trois.
+  fields:
+    entity_id:
+      name: Enceinte
+      required: true
+      selector:
+        entity:
+          domain: media_player
+          multiple: true
+    playlist_id:
+      name: Identifiant de la playlist
+      selector:
+        text:
+    track_id:
+      name: Identifiant du titre
+      selector:
+        text:
+    query:
+      name: Demande libre
+      example: Daft Punk
+      selector:
+        text:

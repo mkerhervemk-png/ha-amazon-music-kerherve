@@ -1,4 +1,4 @@
-"""Client minimal pour l'API GraphQL web d'Amazon Music (lecture seule)."""
+"""Client minimal pour l'API GraphQL web d'Amazon Music (lecture et écriture)."""
 
 from __future__ import annotations
 
@@ -14,10 +14,19 @@ from .const import (
     CONFIG_URL,
     CSRF_MAX_AGE,
     GQL_URL,
+    MUTATION_ADD_TRACK,
+    MUTATION_CREATE_PLAYLIST,
+    MUTATION_DELETE_PLAYLIST,
+    MUTATION_REMOVE_TRACK,
+    MUTATION_SET_LIKE,
+    PAGE_SIZE,
+    QUERY_FOLLOWED_PLAYLISTS,
     QUERY_PLAYLIST_TRACKS,
     QUERY_SEARCH,
+    QUERY_SEARCH_CATALOG,
     QUERY_TRACK,
     QUERY_USER_PLAYLISTS,
+    SEARCH_TYPES,
     TERRITORY,
     WEB_URL,
 )
@@ -159,72 +168,129 @@ class AmazonMusicApi:
             raise AmazonMusicError(f"Erreur GraphQL : {messages}")
         return payload.get("data") or {}
 
+    @staticmethod
+    def _artists(node: dict[str, Any]) -> list[str]:
+        return [
+            e["node"]["name"]
+            for e in (node.get("contributingArtists") or {}).get("edges", [])
+            if e.get("node")
+        ]
+
+    # ------------------------------------------------------------ lecture
+
     async def async_get_track(self, track_id: str) -> dict[str, Any]:
-        """Métadonnées d'un titre (lecture seule)."""
+        """Métadonnées d'un titre."""
         data = await self._gql("Track", QUERY_TRACK, {"id": track_id})
         track = data.get("track")
         if not track:
             raise AmazonMusicError(f"Titre introuvable : {track_id}")
         album = track.get("album") or {}
         images = album.get("images") or []
-        artists = [
-            e["node"]["name"]
-            for e in (track.get("contributingArtists") or {}).get("edges", [])
-            if e.get("node")
-        ]
         return {
             "id": track.get("id"),
             "title": track.get("title"),
-            "artists": artists,
+            "artists": self._artists(track),
             "album": album.get("title"),
             "image": images[0]["url"] if images else None,
+            "duration": track.get("duration"),
+            "like_state": (track.get("likesContext") or {}).get("state"),
         }
 
-    async def async_list_playlists(self, limit: int = 50) -> list[dict[str, Any]]:
-        """Playlists créées par le compte (lecture seule, première page)."""
-        data = await self._gql(
-            "UserPlaylists",
-            QUERY_USER_PLAYLISTS,
-            {"firstLimit": float(limit), "afterCursor": None},
+    async def _paged_playlists(
+        self, operation: str, query: str, field: str, limit: int
+    ) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        cursor: str | None = None
+        while len(results) < limit:
+            data = await self._gql(
+                operation,
+                query,
+                {"limit": float(min(PAGE_SIZE, limit - len(results))), "cursor": cursor},
+            )
+            block = (data.get("user") or {}).get(field) or {}
+            new = 0
+            for e in block.get("edges", []):
+                node = e.get("node") or {}
+                if not node.get("id") or node["id"] in seen:
+                    continue
+                seen.add(node["id"])
+                new += 1
+                results.append(
+                    {
+                        "id": node["id"],
+                        "title": (node.get("title") or "").strip(),
+                        "track_count": node.get("trackCount"),
+                    }
+                )
+            page = block.get("pageInfo") or {}
+            cursor = page.get("token")
+            if not page.get("hasNextPage") or not cursor or not new:
+                break
+        return results[:limit]
+
+    async def async_list_playlists(self, limit: int = 500) -> list[dict[str, Any]]:
+        """Playlists créées par le compte (toutes les pages, jusqu'à limit)."""
+        return await self._paged_playlists(
+            "UserPlaylists", QUERY_USER_PLAYLISTS, "playlists", limit
         )
-        user = data.get("user") or {}
-        edges = (user.get("playlists") or {}).get("edges", [])
-        return [
-            {
-                "id": e["node"]["id"],
-                "title": (e["node"].get("title") or "").strip(),
-                "track_count": e["node"].get("trackCount"),
-            }
-            for e in edges
-            if e.get("node")
-        ]
+
+    async def async_list_followed_playlists(
+        self, limit: int = 500
+    ) -> list[dict[str, Any]]:
+        """Playlists suivies par le compte (toutes les pages, jusqu'à limit)."""
+        return await self._paged_playlists(
+            "FollowedPlaylists", QUERY_FOLLOWED_PLAYLISTS, "followedPlaylists", limit
+        )
+
+    async def _playlist_pages(self, playlist_id: str, limit: int):
+        """Parcourt les titres d'une playlist ; renvoie (playlist, arêtes)."""
+        edges: list[dict[str, Any]] = []
+        playlist: dict[str, Any] = {}
+        cursor: str | None = None
+        while len(edges) < limit:
+            data = await self._gql(
+                "PlaylistTracks",
+                QUERY_PLAYLIST_TRACKS,
+                {
+                    "id": playlist_id,
+                    "limit": float(min(PAGE_SIZE, limit - len(edges))),
+                    "cursor": cursor,
+                },
+            )
+            playlist = data.get("playlist") or {}
+            if not playlist:
+                raise AmazonMusicError(f"Playlist introuvable : {playlist_id}")
+            block = playlist.get("tracks") or {}
+            page_edges = [e for e in block.get("edges", []) if e.get("node")]
+            edges.extend(page_edges)
+            page = block.get("pageInfo") or {}
+            cursor = page.get("token")
+            if not page.get("hasNextPage") or not cursor or not page_edges:
+                break
+        return playlist, edges[:limit]
 
     async def async_get_playlist_tracks(
-        self, playlist_id: str, limit: int = 50
+        self, playlist_id: str, limit: int = 100
     ) -> dict[str, Any]:
-        """Titres d'une playlist (lecture seule, première page)."""
-        data = await self._gql(
-            "PlaylistTracks",
-            QUERY_PLAYLIST_TRACKS,
-            {"id": playlist_id, "limit": float(limit)},
-        )
-        playlist = data.get("playlist")
-        if not playlist:
-            raise AmazonMusicError(f"Playlist introuvable : {playlist_id}")
-        tracks = [
-            {"id": e["node"]["id"], "title": e["node"].get("title")}
-            for e in (playlist.get("tracks") or {}).get("edges", [])
-            if e.get("node")
-        ]
+        """Titres d'une playlist (pages suivies automatiquement jusqu'à limit)."""
+        playlist, edges = await self._playlist_pages(playlist_id, limit)
         return {
             "id": playlist.get("id"),
             "title": (playlist.get("title") or "").strip(),
             "track_count": playlist.get("trackCount"),
-            "tracks": tracks,
+            "tracks": [
+                {
+                    "id": e["node"]["id"],
+                    "title": e["node"].get("title"),
+                    "artists": self._artists(e["node"]),
+                }
+                for e in edges
+            ],
         }
 
     async def async_search(self, query: str) -> list[dict[str, Any]]:
-        """Suggestions de recherche (artistes, playlists, titres, albums)."""
+        """Suggestions de recherche rapides."""
         data = await self._gql("GetSearchSuggestions", QUERY_SEARCH, {"query": query})
         edges = (
             ((data.get("searchSuggestions") or {}).get("suggestedEntities") or {})
@@ -243,3 +309,110 @@ class AmazonMusicApi:
                 }
             )
         return results
+
+    async def async_search_catalog(
+        self, query: str, types: list[str] | None = None, limit: int = 10
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Recherche complète dans le catalogue, regroupée par type."""
+        types = types or SEARCH_TYPES
+        specs = [{"label": t, "types": [t], "limit": limit} for t in types]
+        data = await self._gql(
+            "SpecSearch",
+            QUERY_SEARCH_CATALOG,
+            {"searchText": query, "specifications": specs},
+        )
+        out: dict[str, list[dict[str, Any]]] = {t: [] for t in types}
+        for block in (data.get("specificationSearch") or {}).get("result") or []:
+            label = block.get("label")
+            for e in block.get("edges") or []:
+                node = e.get("node") or {}
+                if not node.get("id"):
+                    continue
+                item = {
+                    "type": node.get("__typename"),
+                    "id": node.get("id"),
+                    "name": node.get("name") or node.get("title"),
+                }
+                if node.get("__typename") == "Track":
+                    item["artists"] = self._artists(node)
+                out.setdefault(label, []).append(item)
+        return out
+
+    # ----------------------------------------------------------- écriture
+
+    async def async_create_playlist(
+        self,
+        title: str,
+        description: str | None = None,
+        track_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        data = await self._gql(
+            "CreatePlaylist",
+            MUTATION_CREATE_PLAYLIST,
+            {"title": title, "description": description, "trackAsins": track_ids},
+        )
+        playlist = data.get("createPlaylist")
+        if not playlist or not playlist.get("id"):
+            raise AmazonMusicError("Création de playlist refusée")
+        return {"id": playlist["id"], "title": playlist.get("title")}
+
+    async def async_delete_playlist(self, playlist_id: str) -> dict[str, Any]:
+        data = await self._gql(
+            "deletePlaylist", MUTATION_DELETE_PLAYLIST, {"id": playlist_id}
+        )
+        result = data.get("deletePlaylist") or {}
+        return {"id": result.get("id"), "deleted": bool(result.get("isDeleted"))}
+
+    async def async_add_track(
+        self, playlist_id: str, track_id: str, reject_duplicates: bool = True
+    ) -> dict[str, Any]:
+        data = await self._gql(
+            "addTrackToPlaylist",
+            MUTATION_ADD_TRACK,
+            {
+                "id": playlist_id,
+                "trackId": track_id,
+                "rejectDuplicateTracks": reject_duplicates,
+            },
+        )
+        result = data.get("appendTracks")
+        if not result:
+            raise AmazonMusicError("Ajout du titre refusé")
+        return {"id": result.get("id"), "track_count": result.get("trackCount")}
+
+    async def async_remove_track(
+        self, playlist_id: str, track_id: str
+    ) -> dict[str, Any]:
+        """Retire la première occurrence d'un titre dans une playlist.
+
+        Le curseur d'une entrée a la forme « position:identifiant » ; le serveur
+        attend l'identifiant seul.
+        """
+        _, edges = await self._playlist_pages(playlist_id, 5000)
+        entry = next(
+            (e.get("cursor") for e in edges if e["node"].get("id") == track_id), None
+        )
+        if entry is None:
+            raise AmazonMusicError(f"Titre {track_id} absent de la playlist")
+        data = await self._gql(
+            "removeTrackFromPlaylist",
+            MUTATION_REMOVE_TRACK,
+            {"id": playlist_id, "cursor": str(entry).split(":")[-1]},
+        )
+        result = data.get("removeTracks")
+        if not result:
+            raise AmazonMusicError("Retrait du titre refusé")
+        return {"id": result.get("id"), "track_count": result.get("trackCount")}
+
+    async def async_set_track_like(self, track_id: str, state: str) -> dict[str, Any]:
+        """state : LIKE, NEUTRAL (aucun avis) ou DISLIKE."""
+        if state == "NONE":
+            state = "NEUTRAL"
+        data = await self._gql(
+            "likeTrack", MUTATION_SET_LIKE, {"likeState": state, "trackId": track_id}
+        )
+        track = (data.get("setTrackLikeState") or {}).get("track") or {}
+        return {
+            "id": track.get("id") or track_id,
+            "like_state": (track.get("likesContext") or {}).get("state"),
+        }

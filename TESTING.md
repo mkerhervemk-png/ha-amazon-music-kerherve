@@ -1,6 +1,6 @@
 # Procédure de test dans Home Assistant
 
-Objectif : vérifier les 5 services en lecture seule, sur ton instance, avec ta session.
+Objectif : vérifier les services (voir README), sur ton instance, avec ta session.
 Aucune écriture (playlist, « j'aime ») n'est présente dans cette version.
 
 ## 0. Sauvegarde

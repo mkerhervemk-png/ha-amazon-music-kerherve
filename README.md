@@ -1,24 +1,35 @@
 # Amazon Music pour Home Assistant (non officiel)
 
 Intégration personnalisée qui réutilise la session de **music.amazon.fr**.
-Version 0.3.0 : lecture seule, cinq services (`get_track`, `list_playlists`, `get_playlist_tracks`, `search`). Procédure de test : voir `TESTING.md`.
+Version 0.5.0 : lecture, écriture et lancement sur Alexa. Procédure de test : voir `TESTING.md`.
 
 > ⚠️ Non officielle. Amazon ne fournit pas d'API publique pour Amazon Music (la Web API est en bêta fermée).
 > Cette intégration rejoue les requêtes internes du site. Elle peut cesser de fonctionner à chaque mise à jour du site, et son usage n'est pas prévu par les conditions d'Amazon.
 
-## Ce qui est fait
-- Saisie des cookies de session dans l'assistant de configuration.
-- Test de la session (compte reconnu sur `config.json`, puis lecture des playlists).
-- Service `amazon_music.get_track` : titre, artistes, album, pochette.
-- Service `amazon_music.list_playlists` : playlists créées par le compte (première page).
-- Service `amazon_music.get_playlist_tracks` : titres d'une playlist (première page).
-- Service `amazon_music.search` : suggestions de recherche (artistes, playlists, titres). Ce n'est pas la page de résultats complète.
+## Services
+Lecture (réponse obligatoire) :
+- `get_track` : titre, artistes, album, pochette, durée, avis.
+- `list_playlists` : playlists créées par le compte, toutes les pages.
+- `list_followed_playlists` : playlists suivies, toutes les pages.
+- `get_playlist_tracks` : titres d'une playlist avec artistes, pages suivies jusqu'à `limit`.
+- `search` : suggestions rapides.
+- `search_catalog` : recherche complète par type (`track`, `artist`, `album`, `playlist`).
 
-## Ce qui n'est pas fait (à venir, sur validation)
-- Bibliothèque suivie (playlists suivies), pagination au-delà de la première page, résultats de recherche complets.
-- Toute écriture (créer une playlist, aimer un titre, ajouter un titre).
-- Lecture sur Echo / Fire TV : prévue via Alexa Media Player, pas via cette intégration.
-- Écriture (créer une playlist, aimer un titre) : désactivée.
+Écriture (modifient le compte Amazon Music) :
+- `create_playlist`, `delete_playlist` (suppression définitive).
+- `add_track_to_playlist`, `remove_track_from_playlist`.
+- `set_track_like` : `LIKE`, `NEUTRAL` ou `DISLIKE`.
+
+Lecture sur enceinte :
+- `play_on_alexa` : transmet une demande à Alexa Media Player (`media_player.play_media`, type `AMAZON_MUSIC`). Alexa cherche par nom : le résultat dépend de sa compréhension du titre.
+
+## Session expirée
+Quand Amazon refuse la session, Home Assistant affiche une demande de reconnexion : recoller la ligne `cookie`. On peut aussi le faire à tout moment par « Reconfigurer ».
+
+## Ce qui n'est pas fait
+- Connexion par identifiant et mot de passe (les cookies restent à copier).
+- Albums et artistes de la bibliothèque, podcasts, file d'attente.
+- Entité lecteur multimédia propre à l'intégration.
 
 ## Installation
 1. Copier `custom_components/amazon_music` dans `/config/custom_components/`.
