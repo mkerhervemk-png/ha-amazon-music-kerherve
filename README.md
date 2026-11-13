@@ -1,0 +1,37 @@
+# Amazon Music pour Home Assistant (non officiel)
+
+Intégration personnalisée qui réutilise la session de **music.amazon.fr**.
+Version 0.1.0 : lecture seule, un seul service (`amazon_music.get_track`).
+
+> ⚠️ Non officielle. Amazon ne fournit pas d'API publique pour Amazon Music (la Web API est en bêta fermée).
+> Cette intégration rejoue les requêtes internes du site. Elle peut cesser de fonctionner à chaque mise à jour du site, et son usage n'est pas prévu par les conditions d'Amazon.
+
+## Ce qui est fait
+- Saisie des cookies de session dans l'assistant de configuration.
+- Test de la session (lecture des métadonnées d'un titre de contrôle).
+- Service `amazon_music.get_track` : titre, album, pochette.
+
+## Ce qui n'est pas fait (à venir, sur validation)
+- Bibliothèque, playlists et recherche : leurs opérations GraphQL ne sont pas encore reproduites.
+- Lecture sur Echo / Fire TV : prévue via Alexa Media Player, pas via cette intégration.
+- Écriture (créer une playlist, aimer un titre) : désactivée.
+
+## Installation
+1. Copier `custom_components/amazon_music` dans `/config/custom_components/`.
+2. Redémarrer Home Assistant.
+3. Paramètres → Appareils et services → Ajouter une intégration → « Amazon Music (non officiel) ».
+
+## Récupérer les cookies
+1. Connectez-vous sur music.amazon.fr dans Chrome.
+2. F12 → Application (ou Stockage) → Cookies → `https://music.amazon.fr`.
+3. Copiez les valeurs de `session-token` et `session-id`. `csrf` est optionnel.
+
+Ces cookies donnent accès à votre compte. Ne les partagez pas, ne les commitez jamais. Ils sont stockés dans la configuration de Home Assistant (`.storage`), lisible par les administrateurs de l'instance.
+
+## Points non vérifiés
+- Extraction automatique du jeton CSRF depuis la page (`api.py`, `async_refresh_csrf`) : non confirmée sur une réponse réelle. Si elle échoue, renseignez `csrf` manuellement.
+- Hash GraphQL `MediaSessionMeatadata` : validé le 13/11/2026 sur la release `1.186.49-hf.1`. Il changera avec les mises à jour du site.
+
+## Dépannage
+- « Cookies refusés » : reconnectez-vous sur le site et recopiez les cookies.
+- « Hash GraphQL obsolète » : le site a changé ; le hash doit être mis à jour dans `const.py`.

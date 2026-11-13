@@ -1,0 +1,11 @@
+{
+  "domain": "amazon_music",
+  "name": "Amazon Music (non officiel)",
+  "codeowners": ["@mkerhervemk-png"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/mkerhervemk-png/ha-amazon-music-kerherve",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "0.1.0"
+}

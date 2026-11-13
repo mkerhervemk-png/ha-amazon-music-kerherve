@@ -1,0 +1,11 @@
+get_track:
+  name: Obtenir un titre
+  description: Lit les métadonnées d'un titre Amazon Music (lecture seule).
+  fields:
+    track_id:
+      name: Identifiant du titre
+      description: Identifiant Amazon Music, par exemple B0GWPYXQHB.
+      required: true
+      example: "B0GWPYXQHB"
+      selector:
+        text:

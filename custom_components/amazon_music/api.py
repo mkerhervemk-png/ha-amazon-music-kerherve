@@ -1,0 +1,159 @@
+"""Client minimal pour l'API GraphQL web d'Amazon Music (lecture seule)."""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+import secrets
+import time
+from typing import Any
+
+import aiohttp
+
+from .const import (
+    API_KEY,
+    GQL_URL,
+    HASH_MEDIA_SESSION_METADATA,
+    OP_MEDIA_SESSION_METADATA,
+    TERRITORY,
+    WEB_URL,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class AmazonMusicError(Exception):
+    """Erreur générique du client."""
+
+
+class AmazonMusicAuthError(AmazonMusicError):
+    """Session expirée ou cookies invalides."""
+
+
+class AmazonMusicApi:
+    """Client qui rejoue les requêtes du site web avec la session de l'utilisateur."""
+
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        session_token: str,
+        session_id: str,
+        csrf: str | None,
+        device_id: str,
+    ) -> None:
+        self._session = session
+        self._cookies = {"session-token": session_token, "session-id": session_id}
+        if csrf:
+            self._cookies["csrf"] = csrf
+        self._csrf_token = csrf or ""
+        self._csrf_rnd = ""
+        self._csrf_ts = ""
+        self._device_id = device_id
+        self._session_id = session_id
+
+    def _cookie_header(self) -> str:
+        return "; ".join(f"{k}={v}" for k, v in self._cookies.items())
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "accept": "application/graphql-response+json, application/json",
+            "accept-language": "fr-FR",
+            "content-language": "fr-FR",
+            "content-type": "application/json",
+            "csrf-token": self._csrf_token,
+            "csrf-rnd": self._csrf_rnd,
+            "csrf-ts": self._csrf_ts,
+            "music-territory": TERRITORY,
+            "x-amzn-client-subscription-tier": "UNLIMITED_HD",
+            "x-amzn-device-id": self._device_id,
+            "x-amzn-device-type": "A16ZV8BU3SN1N3",
+            "x-amzn-feature-flags": "api-cache,use-ups",
+            "x-amzn-session-id": self._session_id,
+            "x-api-key": API_KEY,
+            "cookie": self._cookie_header(),
+            "referer": WEB_URL,
+        }
+
+    async def async_refresh_csrf(self) -> None:
+        """Récupère le jeton CSRF depuis la page web.
+
+        NON VÉRIFIÉ : la méthode d'extraction (regex sur la page d'accueil)
+        n'a pas encore été confirmée sur la réponse réelle du serveur.
+        En cas d'échec, le jeton fourni dans la configuration est conservé.
+        """
+        try:
+            async with self._session.get(
+                WEB_URL, headers={"cookie": self._cookie_header()}
+            ) as resp:
+                if resp.status in (401, 403):
+                    raise AmazonMusicAuthError("Session refusée par la page web")
+                html = await resp.text()
+        except aiohttp.ClientError as err:
+            raise AmazonMusicError(f"Page web injoignable : {err}") from err
+
+        token = re.search(r'csrf-token["\']?\s*[:=]\s*["\']([^"\']+)["\']', html)
+        if token:
+            self._csrf_token = token.group(1)
+        if not self._csrf_rnd:
+            self._csrf_rnd = str(secrets.randbelow(10**10))
+        self._csrf_ts = str(int(time.time()))
+
+    async def _gql(
+        self, operation: str, sha256: str, variables: dict[str, Any]
+    ) -> dict[str, Any]:
+        if not self._csrf_ts:
+            await self.async_refresh_csrf()
+
+        body = {
+            "operationName": operation,
+            "variables": variables,
+            "extensions": {
+                "clientLibrary": {"name": "@apollo/client", "version": "4.1.6"},
+                "persistedQuery": {"version": 1, "sha256Hash": sha256},
+            },
+        }
+        try:
+            async with self._session.post(
+                GQL_URL, headers=self._headers(), data=json.dumps(body)
+            ) as resp:
+                if resp.status in (401, 403):
+                    raise AmazonMusicAuthError("Cookies expirés ou invalides")
+                if resp.status != 200:
+                    raise AmazonMusicError(f"HTTP {resp.status} sur {operation}")
+                payload = await resp.json(content_type=None)
+        except aiohttp.ClientError as err:
+            raise AmazonMusicError(f"Requête {operation} échouée : {err}") from err
+
+        if "errors" in payload:
+            messages = " ; ".join(e.get("message", "?") for e in payload["errors"])
+            if "PersistedQueryNotFound" in messages:
+                raise AmazonMusicError(
+                    "Hash GraphQL obsolète : le site a été mis à jour"
+                )
+            raise AmazonMusicError(f"Erreur GraphQL : {messages}")
+        return payload.get("data", {})
+
+    async def async_get_track(self, track_id: str) -> dict[str, Any]:
+        """Métadonnées d'un titre (lecture seule)."""
+        data = await self._gql(
+            OP_MEDIA_SESSION_METADATA,
+            HASH_MEDIA_SESSION_METADATA,
+            {
+                "id": track_id,
+                "isPodcast": False,
+                "isTrack": True,
+                "isAudiobook": False,
+            },
+        )
+        track = data.get("track")
+        if not track:
+            raise AmazonMusicError(f"Titre introuvable : {track_id}")
+        album = track.get("album") or {}
+        images = album.get("images") or []
+        return {
+            "id": track.get("id"),
+            "title": track.get("title"),
+            "album": album.get("title"),
+            "image": images[0]["url"] if images else None,
+        }

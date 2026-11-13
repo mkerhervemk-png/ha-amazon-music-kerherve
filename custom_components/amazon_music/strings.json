@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Amazon Music",
+        "description": "Renseignez les cookies de votre session music.amazon.fr (voir README).",
+        "data": {
+          "session_token": "Cookie session-token",
+          "session_id": "Cookie session-id",
+          "csrf": "Jeton CSRF (optionnel)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Cookies refusés : session expirée ou invalide.",
+      "cannot_connect": "Connexion à Amazon Music impossible."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré."
+    }
+  }
+}
