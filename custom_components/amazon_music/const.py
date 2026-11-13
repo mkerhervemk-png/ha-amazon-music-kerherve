@@ -2,15 +2,14 @@
 
 DOMAIN = "amazon_music"
 
-CONF_SESSION_TOKEN = "session_token"
-CONF_SESSION_ID = "session_id"
-CONF_CSRF_TOKEN = "csrf_token"
-CONF_CSRF_RND = "csrf_rnd"
-CONF_CSRF_TS = "csrf_ts"
-CONF_DEVICE_ID = "device_id"
+CONF_COOKIES = "cookies"
 
 GQL_URL = "https://gql.music.amazon.fr/"
 WEB_URL = "https://music.amazon.fr/"
+# Renvoie (en POST) les jetons CSRF, l'appareil, la session et le compte.
+CONFIG_URL = "https://music.amazon.fr/config.json"
+# Durée de réutilisation des jetons CSRF avant de les redemander.
+CSRF_MAX_AGE = 1800
 
 # Identifiant public de l'application web (visible dans les requêtes du navigateur).
 API_KEY = "amzn1.application.4ff5579ca2e3407aba989a1f5dbdaf69"

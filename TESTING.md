@@ -15,7 +15,7 @@ Paramètres → Système → Redémarrer. Ne pas le faire pendant une coupure ou
 
 ## 3. Ajouter l'intégration
 Paramètres → Appareils et services → Ajouter une intégration → « Amazon Music (non officiel) ».
-Saisir `session-token`, `session-id`, puis les trois en-têtes `csrf-token`, `csrf-rnd`, `csrf-ts` (récupération décrite dans le README, section « Récupérer les valeurs »). Les trois en-têtes doivent venir de la même requête gql.
+Coller la ligne `cookie` complète (récupération décrite dans le README, section « Récupérer les cookies »).
 
 Résultats attendus :
 - L'intégration se crée sans erreur.
@@ -39,7 +39,7 @@ Paramètres → Système → Journaux. Filtrer sur `amazon_music`. Aucune erreur
 
 ## 6. En cas de problème
 - « Erreur GraphQL » : le schéma du site a probablement changé. Ne pas insister, noter le message exact et le renvoyer.
-- Le jeton CSRF n'est pas encore vérifié : si les appels échouent avec un refus, essayer de saisir `csrf` à la main (valeur `csrf` du cookie du navigateur).
+- `invalid_auth` : cookies incomplets ou session Amazon expirée, recoller la ligne `cookie`.
 
 ## 7. Retour arrière
 1. Paramètres → Appareils et services → Amazon Music → Supprimer.

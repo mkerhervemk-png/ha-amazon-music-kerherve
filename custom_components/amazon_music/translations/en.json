@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Amazon Music",
+        "description": "Collez la ligne « cookie » d'une requête de music.amazon.fr (outils de développement, onglet Réseau, requête config.json ou gql, en-têtes de requête). Les jetons CSRF sont récupérés automatiquement.",
+        "data": {
+          "cookies": "Cookies Amazon (ligne cookie complète)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Compte non reconnu : cookies incomplets ou session Amazon expirée.",
+      "cannot_connect": "Connexion à Amazon Music impossible."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré."
+    }
+  }
+}

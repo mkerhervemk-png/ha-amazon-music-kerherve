@@ -1,20 +1,17 @@
-"""Intégration Amazon Music pour Home Assistant (lecture seule, version initiale)."""
+"""Intégration Amazon Music pour Home Assistant (lecture seule)."""
 
 from __future__ import annotations
 
+import aiohttp
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .api import AmazonMusicApi, AmazonMusicAuthError, AmazonMusicError
 from .const import (
-    CONF_CSRF_RND,
-    CONF_CSRF_TOKEN,
-    CONF_CSRF_TS,
-    CONF_DEVICE_ID,
-    CONF_SESSION_ID,
-    CONF_SESSION_TOKEN,
+    CONF_COOKIES,
     DOMAIN,
     SERVICE_GET_PLAYLIST_TRACKS,
     SERVICE_GET_TRACK,
@@ -35,15 +32,16 @@ SERVICE_SEARCH_SCHEMA = vol.Schema({vol.Required("query"): str})
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Crée le client à partir des cookies saisis dans la configuration."""
-    api = AmazonMusicApi(
-        async_get_clientsession(hass),
-        session_token=entry.data[CONF_SESSION_TOKEN],
-        session_id=entry.data[CONF_SESSION_ID],
-        csrf_token=entry.data[CONF_CSRF_TOKEN],
-        csrf_rnd=entry.data[CONF_CSRF_RND],
-        csrf_ts=entry.data[CONF_CSRF_TS],
-        device_id=entry.data[CONF_DEVICE_ID],
-    )
+    session = async_create_clientsession(hass, cookie_jar=aiohttp.DummyCookieJar())
+    api = AmazonMusicApi(session, entry.data[CONF_COOKIES])
+    try:
+        await api.async_refresh_config()
+    except AmazonMusicAuthError as err:
+        raise ConfigEntryAuthFailed(
+            "Session Amazon Music expirée : recollez les cookies"
+        ) from err
+    except AmazonMusicError as err:
+        raise ConfigEntryNotReady(str(err)) from err
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = api
 
     async def handle_get_track(call: ServiceCall) -> dict:

@@ -8,7 +8,7 @@ Version 0.3.0 : lecture seule, cinq services (`get_track`, `list_playlists`, `ge
 
 ## Ce qui est fait
 - Saisie des cookies de session dans l'assistant de configuration.
-- Test de la session (lecture des métadonnées d'un titre de contrôle).
+- Test de la session (compte reconnu sur `config.json`, puis lecture des playlists).
 - Service `amazon_music.get_track` : titre, artistes, album, pochette.
 - Service `amazon_music.list_playlists` : playlists créées par le compte (première page).
 - Service `amazon_music.get_playlist_tracks` : titres d'une playlist (première page).
@@ -25,25 +25,21 @@ Version 0.3.0 : lecture seule, cinq services (`get_track`, `list_playlists`, `ge
 2. Redémarrer Home Assistant.
 3. Paramètres → Appareils et services → Ajouter une intégration → « Amazon Music (non officiel) ».
 
-## Récupérer les valeurs
-Il faut deux cookies et trois en-têtes, tous pris dans la **même** session du navigateur.
+## Récupérer les cookies
+Depuis la version 0.4.0, un seul champ est demandé : la ligne `cookie` de la session.
 
-**Cookies** (F12 → Application → Cookies → `https://music.amazon.fr`) :
-- `session-token` : copier la valeur (chaîne longue).
-- `session-id` : copier la valeur (format `523-xxxxxxx-xxxxxxx`).
+1. Ouvrir `music.amazon.fr` dans le navigateur, connecté au compte.
+2. F12, onglet **Réseau**, recharger la page.
+3. Cliquer sur la requête `config.json` (ou une requête `gql`).
+4. Dans **En-têtes de requête**, copier toute la valeur de la ligne `cookie`.
+5. La coller dans le champ de l'intégration.
 
-**En-têtes CSRF** (F12 → Réseau, filtrer sur `gql`, cliquer sur une requête, onglet En-têtes / Headers) :
-- `csrf-token`
-- `csrf-rnd`
-- `csrf-ts`
-
-Les trois doivent venir de la même requête : un seul en-tête mal copié donne « Cookies ou en-têtes CSRF refusés ».
-
-Ces cookies donnent accès à votre compte. Ne les partagez pas, ne les commitez jamais. Ils sont stockés dans la configuration de Home Assistant (`.storage`), lisible par les administrateurs de l'instance.
+Les jetons CSRF, l'appareil et la session sont lus automatiquement sur `config.json` et renouvelés par le composant.
 
 ## Points non vérifiés
-- Extraction automatique du jeton CSRF depuis la page (`api.py`, `async_refresh_csrf`) : non confirmée sur une réponse réelle. Si elle échoue, renseignez `csrf` manuellement.
-- Requêtes GraphQL écrites à la main (`const.py`) : vérifiées le 13/11/2026 avec une session de test. Le schéma peut changer lors d'une mise à jour du site.
+- Liste exacte des cookies exigés par Amazon : non déterminée, d'où la ligne complète.
+- Durée de vie de la session Amazon : inconnue. À l'expiration, recoller les cookies.
+- Requêtes GraphQL écrites à la main (`const.py`) : vérifiées le 13/11/2026. Le schéma peut changer lors d'une mise à jour du site.
 
 ## Dépannage
 - « Cookies refusés » : reconnectez-vous sur le site et recopiez les cookies.

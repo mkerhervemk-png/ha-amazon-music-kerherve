@@ -3,18 +3,14 @@
     "step": {
       "user": {
         "title": "Amazon Music",
-        "description": "Renseignez les cookies et les en-têtes CSRF de votre session music.amazon.fr (voir README, section « Récupérer les valeurs »).",
+        "description": "Collez la ligne « cookie » d'une requête de music.amazon.fr (outils de développement, onglet Réseau, requête config.json ou gql, en-têtes de requête). Les jetons CSRF sont récupérés automatiquement.",
         "data": {
-          "session_token": "Cookie session-token",
-          "session_id": "Cookie session-id",
-          "csrf_token": "En-tête csrf-token",
-          "csrf_rnd": "En-tête csrf-rnd",
-          "csrf_ts": "En-tête csrf-ts"
+          "cookies": "Cookies Amazon (ligne cookie complète)"
         }
       }
     },
     "error": {
-      "invalid_auth": "Cookies ou en-têtes CSRF refusés : session expirée, ou les trois valeurs ne viennent pas de la même requête.",
+      "invalid_auth": "Compte non reconnu : cookies incomplets ou session Amazon expirée.",
       "cannot_connect": "Connexion à Amazon Music impossible."
     },
     "abort": {
