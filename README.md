@@ -1,10 +1,18 @@
 # Amazon Music pour Home Assistant (non officiel)
 
 Intégration personnalisée qui réutilise la session de **music.amazon.fr**.
-Version 0.5.0 : lecture, écriture et lancement sur Alexa. Procédure de test : voir `TESTING.md`.
+Version 0.6.0 : entités, lecture, écriture et lancement sur Alexa. Procédure de test : voir `TESTING.md`.
 
 > ⚠️ Non officielle. Amazon ne fournit pas d'API publique pour Amazon Music (la Web API est en bêta fermée).
 > Cette intégration rejoue les requêtes internes du site. Elle peut cesser de fonctionner à chaque mise à jour du site, et son usage n'est pas prévu par les conditions d'Amazon.
+
+## Entités
+Regroupées sous l'appareil « Amazon Music », relues toutes les 30 minutes :
+- `binary_sensor.amazon_music_connexion` : session valide ou non.
+- `sensor.amazon_music_playlists`, `sensor.amazon_music_playlists_suivies` : nombre, liste en attribut `playlists`.
+- `sensor.amazon_music_titres_aimes`, `sensor.amazon_music_dernier_titre_aime` (avec pochette).
+- `select.amazon_music_playlist` : choix d'une playlist, identifiant en attribut `playlist_id`.
+- `button.amazon_music_actualiser`.
 
 ## Services
 Lecture (réponse obligatoire) :
@@ -29,7 +37,7 @@ Quand Amazon refuse la session, Home Assistant affiche une demande de reconnexio
 ## Ce qui n'est pas fait
 - Connexion par identifiant et mot de passe (les cookies restent à copier).
 - Albums et artistes de la bibliothèque, podcasts, file d'attente.
-- Entité lecteur multimédia propre à l'intégration.
+- Entité lecteur multimédia propre à l'intégration (l'état de lecture passe par Alexa Media Player).
 
 ## Installation
 1. Copier `custom_components/amazon_music` dans `/config/custom_components/`.

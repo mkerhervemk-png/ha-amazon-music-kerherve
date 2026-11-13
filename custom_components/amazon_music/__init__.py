@@ -8,6 +8,7 @@ from typing import Any
 import aiohttp
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
@@ -18,6 +19,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .api import AmazonMusicApi, AmazonMusicAuthError, AmazonMusicError
+from .coordinator import AmazonMusicCoordinator
 from .const import (
     CONF_COOKIES,
     DOMAIN,
@@ -36,6 +38,17 @@ from .const import (
     SERVICE_SEARCH_CATALOG,
     SERVICE_SET_TRACK_LIKE,
 )
+
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SELECT, Platform.SENSOR]
+
+# Services qui modifient le compte : les entités sont relues ensuite.
+WRITES = {
+    SERVICE_ADD_TRACK,
+    SERVICE_CREATE_PLAYLIST,
+    SERVICE_DELETE_PLAYLIST,
+    SERVICE_REMOVE_TRACK,
+    SERVICE_SET_TRACK_LIKE,
+}
 
 _LIMIT = vol.All(vol.Coerce(int), vol.Range(min=1, max=5000))
 
@@ -122,7 +135,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ) from err
     except AmazonMusicError as err:
         raise ConfigEntryNotReady(str(err)) from err
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = api
+    coordinator = AmazonMusicCoordinator(hass, entry, api)
+    await coordinator.async_config_entry_first_refresh()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "api": api,
+        "coordinator": coordinator,
+    }
 
     async def play_on_alexa(data: dict[str, Any]) -> dict[str, Any]:
         """Demande à Alexa Media Player de jouer un contenu Amazon Music."""
@@ -197,6 +215,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 ) from err
             except AmazonMusicError as err:
                 raise HomeAssistantError(str(err)) from err
+            if name in WRITES:
+                await coordinator.async_request_refresh()
             if name in wrap:
                 result = {wrap[name]: result}
             return result if call.return_response else None
@@ -213,11 +233,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 SupportsResponse.ONLY if name in READ_ONLY else SupportsResponse.OPTIONAL
             ),
         )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Décharge l'intégration."""
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
     hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     if not hass.data.get(DOMAIN):
         for name in SCHEMAS:

@@ -284,6 +284,14 @@ class AmazonMusicApi:
                     "id": e["node"]["id"],
                     "title": e["node"].get("title"),
                     "artists": self._artists(e["node"]),
+                    "album": (e["node"].get("album") or {}).get("title"),
+                    "image": next(
+                        (
+                            i.get("url")
+                            for i in (e["node"].get("album") or {}).get("images") or []
+                        ),
+                        None,
+                    ),
                 }
                 for e in edges
             ],

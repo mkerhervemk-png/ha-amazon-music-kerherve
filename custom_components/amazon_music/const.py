@@ -19,6 +19,8 @@ TERRITORY = "FR"
 # complet, sans hash persisté. Vérifiées le 13/11/2026 dans une session réelle.
 # Pagination : le curseur à renvoyer est pageInfo.token (endCursor est vide).
 PAGE_SIZE = 100
+# Intervalle de relecture des entités (minutes).
+SCAN_INTERVAL_MINUTES = 30
 
 QUERY_TRACK = """
 query Track($id: String!) {
@@ -66,7 +68,12 @@ query PlaylistTracks($id: String!, $limit: Float!, $cursor: String) {
     tracks(limit: $limit, cursor: $cursor) {
       edges {
         cursor
-        node { id title contributingArtists { edges { node { name } } } }
+        node {
+          id
+          title
+          album { title images { url } }
+          contributingArtists { edges { node { name } } }
+        }
       }
       pageInfo { hasNextPage token }
     }
