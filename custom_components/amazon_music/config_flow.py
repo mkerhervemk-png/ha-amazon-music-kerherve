@@ -1,4 +1,4 @@
-"""Configuration par saisie des cookies de session Amazon Music."""
+"""Configuration par saisie des cookies et jetons CSRF d'Amazon Music."""
 
 from __future__ import annotations
 
@@ -12,7 +12,9 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AmazonMusicApi, AmazonMusicAuthError, AmazonMusicError
 from .const import (
-    CONF_CSRF,
+    CONF_CSRF_RND,
+    CONF_CSRF_TOKEN,
+    CONF_CSRF_TS,
     CONF_DEVICE_ID,
     CONF_SESSION_ID,
     CONF_SESSION_TOKEN,
@@ -26,7 +28,9 @@ STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_SESSION_TOKEN): str,
         vol.Required(CONF_SESSION_ID): str,
-        vol.Optional(CONF_CSRF): str,
+        vol.Required(CONF_CSRF_TOKEN): str,
+        vol.Required(CONF_CSRF_RND): str,
+        vol.Required(CONF_CSRF_TS): str,
     }
 )
 
@@ -70,7 +74,9 @@ async def _validate(hass: HomeAssistant, data: dict[str, Any]) -> None:
         async_get_clientsession(hass),
         session_token=data[CONF_SESSION_TOKEN],
         session_id=data[CONF_SESSION_ID],
-        csrf=data.get(CONF_CSRF),
+        csrf_token=data[CONF_CSRF_TOKEN],
+        csrf_rnd=data[CONF_CSRF_RND],
+        csrf_ts=data[CONF_CSRF_TS],
         device_id=str(secrets.randbelow(10**19)),
     )
     await api.async_get_track(TEST_TRACK_ID)

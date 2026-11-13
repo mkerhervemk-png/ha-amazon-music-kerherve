@@ -9,7 +9,9 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AmazonMusicApi, AmazonMusicAuthError, AmazonMusicError
 from .const import (
-    CONF_CSRF,
+    CONF_CSRF_RND,
+    CONF_CSRF_TOKEN,
+    CONF_CSRF_TS,
     CONF_DEVICE_ID,
     CONF_SESSION_ID,
     CONF_SESSION_TOKEN,
@@ -37,7 +39,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_get_clientsession(hass),
         session_token=entry.data[CONF_SESSION_TOKEN],
         session_id=entry.data[CONF_SESSION_ID],
-        csrf=entry.data.get(CONF_CSRF),
+        csrf_token=entry.data[CONF_CSRF_TOKEN],
+        csrf_rnd=entry.data[CONF_CSRF_RND],
+        csrf_ts=entry.data[CONF_CSRF_TS],
         device_id=entry.data[CONF_DEVICE_ID],
     )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = api

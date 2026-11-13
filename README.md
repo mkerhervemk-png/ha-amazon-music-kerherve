@@ -25,10 +25,19 @@ Version 0.3.0 : lecture seule, cinq services (`get_track`, `list_playlists`, `ge
 2. Redémarrer Home Assistant.
 3. Paramètres → Appareils et services → Ajouter une intégration → « Amazon Music (non officiel) ».
 
-## Récupérer les cookies
-1. Connectez-vous sur music.amazon.fr dans Chrome.
-2. F12 → Application (ou Stockage) → Cookies → `https://music.amazon.fr`.
-3. Copiez les valeurs de `session-token` et `session-id`. `csrf` est optionnel.
+## Récupérer les valeurs
+Il faut deux cookies et trois en-têtes, tous pris dans la **même** session du navigateur.
+
+**Cookies** (F12 → Application → Cookies → `https://music.amazon.fr`) :
+- `session-token` : copier la valeur (chaîne longue).
+- `session-id` : copier la valeur (format `523-xxxxxxx-xxxxxxx`).
+
+**En-têtes CSRF** (F12 → Réseau, filtrer sur `gql`, cliquer sur une requête, onglet En-têtes / Headers) :
+- `csrf-token`
+- `csrf-rnd`
+- `csrf-ts`
+
+Les trois doivent venir de la même requête : un seul en-tête mal copié donne « Cookies ou en-têtes CSRF refusés ».
 
 Ces cookies donnent accès à votre compte. Ne les partagez pas, ne les commitez jamais. Ils sont stockés dans la configuration de Home Assistant (`.storage`), lisible par les administrateurs de l'instance.
 

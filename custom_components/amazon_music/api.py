@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
-import secrets
-import time
 from typing import Any
 
 import aiohttp
@@ -30,32 +27,34 @@ class AmazonMusicError(Exception):
 
 
 class AmazonMusicAuthError(AmazonMusicError):
-    """Session expirée ou cookies invalides."""
+    """Session expirée ou cookies / jetons CSRF invalides."""
 
 
 class AmazonMusicApi:
-    """Client qui rejoue les requêtes du site web avec la session de l'utilisateur."""
+    """Client qui rejoue les requêtes du site web avec la session de l'utilisateur.
+
+    Le serveur exige les trois en-têtes CSRF ensemble (csrf-token, csrf-rnd,
+    csrf-ts), copiés depuis une requête du site. Un seul en-tête suffit
+    à faire échouer l'authentification (401).
+    """
 
     def __init__(
         self,
         session: aiohttp.ClientSession,
         session_token: str,
         session_id: str,
-        csrf: str | None,
+        csrf_token: str,
+        csrf_rnd: str,
+        csrf_ts: str,
         device_id: str,
     ) -> None:
         self._session = session
-        self._cookies = {"session-token": session_token, "session-id": session_id}
-        if csrf:
-            self._cookies["csrf"] = csrf
-        self._csrf_token = csrf or ""
-        self._csrf_rnd = str(secrets.randbelow(10**10))
-        self._csrf_ts = ""
-        self._device_id = device_id
+        self._session_token = session_token
         self._session_id = session_id
-
-    def _cookie_header(self) -> str:
-        return "; ".join(f"{k}={v}" for k, v in self._cookies.items())
+        self._csrf_token = csrf_token
+        self._csrf_rnd = csrf_rnd
+        self._csrf_ts = csrf_ts
+        self._device_id = device_id
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -73,45 +72,22 @@ class AmazonMusicApi:
             "x-amzn-feature-flags": "api-cache,use-ups",
             "x-amzn-session-id": self._session_id,
             "x-api-key": API_KEY,
-            "cookie": self._cookie_header(),
+            "cookie": f"session-token={self._session_token}; session-id={self._session_id}",
             "referer": WEB_URL,
         }
-
-    async def async_refresh_csrf(self) -> None:
-        """Récupère le jeton CSRF depuis la page web.
-
-        NON VÉRIFIÉ : la méthode d'extraction (regex sur la page d'accueil)
-        n'a pas encore été confirmée sur la réponse réelle du serveur.
-        En cas d'échec, le jeton fourni dans la configuration est conservé.
-        """
-        try:
-            async with self._session.get(
-                WEB_URL, headers={"cookie": self._cookie_header()}
-            ) as resp:
-                if resp.status in (401, 403):
-                    raise AmazonMusicAuthError("Session refusée par la page web")
-                html = await resp.text()
-        except aiohttp.ClientError as err:
-            raise AmazonMusicError(f"Page web injoignable : {err}") from err
-
-        token = re.search(r'csrf-token["\']?\s*[:=]\s*["\']([^"\']+)["\']', html)
-        if token:
-            self._csrf_token = token.group(1)
-        self._csrf_ts = str(int(time.time()))
 
     async def _gql(
         self, operation: str, query: str, variables: dict[str, Any]
     ) -> dict[str, Any]:
-        if not self._csrf_ts:
-            await self.async_refresh_csrf()
-
         body = {"operationName": operation, "variables": variables, "query": query}
         try:
             async with self._session.post(
                 GQL_URL, headers=self._headers(), data=json.dumps(body)
             ) as resp:
                 if resp.status in (401, 403):
-                    raise AmazonMusicAuthError("Cookies expirés ou invalides")
+                    raise AmazonMusicAuthError(
+                        "Cookies ou jetons CSRF refusés (session expirée ?)"
+                    )
                 if resp.status != 200:
                     raise AmazonMusicError(f"HTTP {resp.status} sur {operation}")
                 payload = await resp.json(content_type=None)
@@ -143,6 +119,25 @@ class AmazonMusicApi:
             "album": album.get("title"),
             "image": images[0]["url"] if images else None,
         }
+
+    async def async_list_playlists(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Playlists créées par le compte (lecture seule, première page)."""
+        data = await self._gql(
+            "UserPlaylists",
+            QUERY_USER_PLAYLISTS,
+            {"firstLimit": float(limit), "afterCursor": None},
+        )
+        user = data.get("user") or {}
+        edges = (user.get("playlists") or {}).get("edges", [])
+        return [
+            {
+                "id": e["node"]["id"],
+                "title": (e["node"].get("title") or "").strip(),
+                "track_count": e["node"].get("trackCount"),
+            }
+            for e in edges
+            if e.get("node")
+        ]
 
     async def async_get_playlist_tracks(
         self, playlist_id: str, limit: int = 50
@@ -188,22 +183,3 @@ class AmazonMusicApi:
                 }
             )
         return results
-
-    async def async_list_playlists(self, limit: int = 50) -> list[dict[str, Any]]:
-        """Playlists créées par le compte (lecture seule, première page)."""
-        data = await self._gql(
-            "UserPlaylists",
-            QUERY_USER_PLAYLISTS,
-            {"firstLimit": float(limit), "afterCursor": None},
-        )
-        user = data.get("user") or {}
-        edges = (user.get("playlists") or {}).get("edges", [])
-        return [
-            {
-                "id": e["node"]["id"],
-                "title": (e["node"].get("title") or "").strip(),
-                "track_count": e["node"].get("trackCount"),
-            }
-            for e in edges
-            if e.get("node")
-        ]

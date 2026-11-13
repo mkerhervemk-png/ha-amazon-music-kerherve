@@ -15,11 +15,11 @@ Paramètres → Système → Redémarrer. Ne pas le faire pendant une coupure ou
 
 ## 3. Ajouter l'intégration
 Paramètres → Appareils et services → Ajouter une intégration → « Amazon Music (non officiel) ».
-Saisir les cookies `session-token` et `session-id` (récupération décrite dans le README). `csrf` reste vide dans un premier temps.
+Saisir `session-token`, `session-id`, puis les trois en-têtes `csrf-token`, `csrf-rnd`, `csrf-ts` (récupération décrite dans le README, section « Récupérer les valeurs »). Les trois en-têtes doivent venir de la même requête gql.
 
 Résultats attendus :
 - L'intégration se crée sans erreur.
-- Si « Cookies refusés » : reconnectez-vous sur music.amazon.fr, recopiez les cookies.
+- Si « Cookies ou en-têtes CSRF refusés » : recopiez les deux cookies et les trois en-têtes depuis une même requête gql récente.
 - Si « Connexion impossible » : vérifier l'accès réseau de HA vers `gql.music.amazon.fr`.
 
 ## 4. Tester les services

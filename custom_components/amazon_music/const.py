@@ -4,7 +4,9 @@ DOMAIN = "amazon_music"
 
 CONF_SESSION_TOKEN = "session_token"
 CONF_SESSION_ID = "session_id"
-CONF_CSRF = "csrf"
+CONF_CSRF_TOKEN = "csrf_token"
+CONF_CSRF_RND = "csrf_rnd"
+CONF_CSRF_TS = "csrf_ts"
 CONF_DEVICE_ID = "device_id"
 
 GQL_URL = "https://gql.music.amazon.fr/"
