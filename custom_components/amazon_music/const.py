@@ -40,5 +40,41 @@ query UserPlaylists($firstLimit: Float!, $afterCursor: String) {
 }
 """
 
+QUERY_PLAYLIST_TRACKS = """
+query PlaylistTracks($id: String!, $limit: Float!) {
+  playlist(id: $id) {
+    id
+    title
+    trackCount
+    tracks(limit: $limit) {
+      edges { node { id title } }
+    }
+  }
+}
+"""
+
+# Renvoie des suggestions (artistes, playlists, titres) : c'est la recherche
+# disponible sur ce point d'entrée, pas la page de résultats complète.
+QUERY_SEARCH = """
+query GetSearchSuggestions($query: String!) {
+  searchSuggestions(query: $query) {
+    id
+    suggestedEntities {
+      edges {
+        node {
+          __typename
+          ... on Track { id title }
+          ... on Artist { id name }
+          ... on Album { id title }
+          ... on Playlist { id title }
+        }
+      }
+    }
+  }
+}
+"""
+
 SERVICE_GET_TRACK = "get_track"
 SERVICE_LIST_PLAYLISTS = "list_playlists"
+SERVICE_GET_PLAYLIST_TRACKS = "get_playlist_tracks"
+SERVICE_SEARCH = "search"

@@ -14,6 +14,8 @@ import aiohttp
 from .const import (
     API_KEY,
     GQL_URL,
+    QUERY_PLAYLIST_TRACKS,
+    QUERY_SEARCH,
     QUERY_TRACK,
     QUERY_USER_PLAYLISTS,
     TERRITORY,
@@ -141,6 +143,51 @@ class AmazonMusicApi:
             "album": album.get("title"),
             "image": images[0]["url"] if images else None,
         }
+
+    async def async_get_playlist_tracks(
+        self, playlist_id: str, limit: int = 50
+    ) -> dict[str, Any]:
+        """Titres d'une playlist (lecture seule, première page)."""
+        data = await self._gql(
+            "PlaylistTracks",
+            QUERY_PLAYLIST_TRACKS,
+            {"id": playlist_id, "limit": float(limit)},
+        )
+        playlist = data.get("playlist")
+        if not playlist:
+            raise AmazonMusicError(f"Playlist introuvable : {playlist_id}")
+        tracks = [
+            {"id": e["node"]["id"], "title": e["node"].get("title")}
+            for e in (playlist.get("tracks") or {}).get("edges", [])
+            if e.get("node")
+        ]
+        return {
+            "id": playlist.get("id"),
+            "title": (playlist.get("title") or "").strip(),
+            "track_count": playlist.get("trackCount"),
+            "tracks": tracks,
+        }
+
+    async def async_search(self, query: str) -> list[dict[str, Any]]:
+        """Suggestions de recherche (artistes, playlists, titres, albums)."""
+        data = await self._gql("GetSearchSuggestions", QUERY_SEARCH, {"query": query})
+        edges = (
+            ((data.get("searchSuggestions") or {}).get("suggestedEntities") or {})
+            .get("edges", [])
+        )
+        results = []
+        for e in edges:
+            node = e.get("node") or {}
+            if not node:
+                continue
+            results.append(
+                {
+                    "type": node.get("__typename"),
+                    "id": node.get("id"),
+                    "name": node.get("name") or node.get("title"),
+                }
+            )
+        return results
 
     async def async_list_playlists(self, limit: int = 50) -> list[dict[str, Any]]:
         """Playlists créées par le compte (lecture seule, première page)."""

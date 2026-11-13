@@ -7,5 +7,5 @@
   "documentation": "https://github.com/mkerhervemk-png/ha-amazon-music-kerherve",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.3.0"
 }

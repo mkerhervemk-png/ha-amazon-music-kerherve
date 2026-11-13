@@ -10,6 +10,35 @@ get_track:
       selector:
         text:
 
+get_playlist_tracks:
+  name: Titres d'une playlist
+  description: Liste les titres d'une playlist (lecture seule, première page).
+  fields:
+    playlist_id:
+      name: Identifiant de la playlist
+      required: true
+      example: "b7048fc052e14b6ebb6d14198e191c62"
+      selector:
+        text:
+    limit:
+      name: Nombre maximum
+      default: 50
+      selector:
+        number:
+          min: 1
+          max: 200
+
+search:
+  name: Rechercher
+  description: Suggestions de recherche (artistes, playlists, titres, albums). Ce n'est pas la page de résultats complète.
+  fields:
+    query:
+      name: Recherche
+      required: true
+      example: "bach"
+      selector:
+        text:
+
 list_playlists:
   name: Lister les playlists
   description: Liste les playlists créées par le compte (lecture seule, première page).
