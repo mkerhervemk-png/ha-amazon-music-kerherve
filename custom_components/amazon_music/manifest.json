@@ -7,7 +7,9 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/mkerhervemk-png/ha-amazon-music-kerherve",
+  "integration_type": "service",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/mkerhervemk-png/ha-amazon-music-kerherve/issues",
   "requirements": [],
-  "version": "0.6.0"
+  "version": "0.6.1"
 }

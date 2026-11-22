@@ -126,6 +126,8 @@ READ_ONLY = {
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Crée le client à partir des cookies saisis dans la configuration."""
     session = async_create_clientsession(hass, cookie_jar=aiohttp.DummyCookieJar())
+    # Fermée au déchargement : pas d'accumulation de sessions à chaque rechargement.
+    entry.async_on_unload(session.close)
     api = AmazonMusicApi(session, entry.data[CONF_COOKIES])
     try:
         await api.async_refresh_config()
@@ -137,10 +139,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady(str(err)) from err
     coordinator = AmazonMusicCoordinator(hass, entry, api)
     await coordinator.async_config_entry_first_refresh()
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
-        "api": api,
-        "coordinator": coordinator,
-    }
 
     async def play_on_alexa(data: dict[str, Any]) -> dict[str, Any]:
         """Demande à Alexa Media Player de jouer un contenu Amazon Music."""
@@ -202,13 +200,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         SERVICE_SEARCH_CATALOG: "results",
     }
 
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "api": api,
+        "coordinator": coordinator,
+        "entry": entry,
+        "handlers": handlers,
+    }
+
     def make(name: str):
         async def handle(call: ServiceCall) -> dict[str, Any] | None:
+            # Résolu à chaque appel : le compte chargé le plus récemment. Ainsi
+            # les services restent valides si un autre compte est déchargé.
+            loaded = hass.data.get(DOMAIN) or {}
+            if not loaded:
+                raise HomeAssistantError("Aucun compte Amazon Music chargé")
+            current = list(loaded.values())[-1]
+            target, coordinator = current["entry"], current["coordinator"]
             try:
-                result = await handlers[name](dict(call.data))
+                result = await current["handlers"][name](dict(call.data))
             except AmazonMusicAuthError as err:
                 # Propose à l'utilisateur de recoller ses cookies.
-                entry.async_start_reauth(hass)
+                target.async_start_reauth(hass)
                 raise HomeAssistantError(
                     "Session Amazon Music expirée : recollez les cookies "
                     "(Paramètres → Appareils et services)"

@@ -1,7 +1,7 @@
 # Amazon Music pour Home Assistant (non officiel)
 
 Intégration personnalisée qui réutilise la session de **music.amazon.fr**.
-Version 0.6.0 : entités, lecture, écriture et lancement sur Alexa. Procédure de test : voir `TESTING.md`.
+Version 0.6.1 : entités, lecture, écriture et lancement sur Alexa. Procédure de test : voir `TESTING.md`.
 
 > ⚠️ Non officielle. Amazon ne fournit pas d'API publique pour Amazon Music (la Web API est en bêta fermée).
 > Cette intégration rejoue les requêtes internes du site. Elle peut cesser de fonctionner à chaque mise à jour du site, et son usage n'est pas prévu par les conditions d'Amazon.

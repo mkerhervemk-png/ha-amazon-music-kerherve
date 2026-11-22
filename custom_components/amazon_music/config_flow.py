@@ -35,8 +35,9 @@ class AmazonMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _check(self, raw: str) -> tuple[str, str | None, str | None]:
         """Renvoie (cookies nettoyés, identifiant du compte, erreur)."""
         cookies = clean_cookies(raw)
+        # Session jetable, fermée après la vérification.
         session = async_create_clientsession(
-            self.hass, cookie_jar=aiohttp.DummyCookieJar()
+            self.hass, auto_cleanup=False, cookie_jar=aiohttp.DummyCookieJar()
         )
         api = AmazonMusicApi(session, cookies)
         try:
@@ -47,6 +48,8 @@ class AmazonMusicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return cookies, None, "invalid_auth"
         except AmazonMusicError:
             return cookies, None, "cannot_connect"
+        finally:
+            await session.close()
         return cookies, api.customer_id, None
 
     async def async_step_user(
